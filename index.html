@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ajedrez 3D — Gran Salón del Castillo Medieval</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- ESCENA 3D INTERACTIVA -->
+  <div id="castle-viewport"></div>
+
+  <!-- BARRA SUPERIOR MEDIEVAL -->
+  <header class="top-bar">
+    <div class="brand-title">
+      <span class="brand-crest">🏰</span>
+      <div>
+        <h1>Ajedrez Real 3D · Castillo Medieval</h1>
+        <p>Gran Salón Gótico · Geometría 3D + Script de Blender (bpy)</p>
+      </div>
+    </div>
+
+    <div id="turn-badge" class="turn-badge white-turn">
+      Turno: Reino de Marfil (Blancas)
+    </div>
+
+    <div class="top-actions">
+      <button id="btn-blender-info" class="btn">🐍 Script de Blender (.py)</button>
+      <button id="btn-import-glb" class="btn">📦 Importar .GLB de Blender</button>
+      <input id="input-glb" type="file" accept=".glb,.gltf" class="hidden" />
+      <button id="btn-sound" class="btn">🔊 Sonido: Activo</button>
+    </div>
+  </header>
+
+  <!-- BANNER CENTRAL DE JAQUE / FIN DE PARTIDA -->
+  <div id="status-banner" class="status-banner hidden">¡JAQUE AL REY!</div>
+
+  <!-- PANEL IZQUIERDO: CONFIGURACIÓN DE PARTIDA Y CÁMARAS -->
+  <aside class="side-panel left-panel">
+    <div class="panel-section">
+      <h2>⚔️ Modo de Juego</h2>
+      <div class="control-group">
+        <label for="select-mode">Oponente</label>
+        <select id="select-mode">
+          <option value="ai">Jugador vs IA del Castillo</option>
+          <option value="pvp">2 Jugadores (Mismo dispositivo)</option>
+        </select>
+      </div>
+
+      <div id="ai-options-group" class="control-group">
+        <label for="select-side">Tu bando</label>
+        <select id="select-side">
+          <option value="w">Blancas (Marfil y Oro)</option>
+          <option value="b">Negras (Obsidiana y Bronce)</option>
+        </select>
+
+        <label for="select-difficulty">Nivel de la IA</label>
+        <select id="select-difficulty">
+          <option value="1">Escudero (Fácil)</option>
+          <option value="2" selected>Caballero Real (Medio)</option>
+          <option value="3">Gran Maestre (Difícil)</option>
+        </select>
+      </div>
+
+      <div id="pvp-options-group" class="control-group" style="display: none;">
+        <label class="checkbox-row">
+          <input type="checkbox" id="chk-autorotate" />
+          Girar cámara en cada turno
+        </label>
+      </div>
+
+      <div class="btn-grid" style="margin-top: 8px;">
+        <button id="btn-new-game" class="btn btn-primary">👑 Nueva Partida</button>
+        <button id="btn-undo" class="btn">↩️ Deshacer</button>
+      </div>
+      <button id="btn-hint" class="btn" style="width: 100%; margin-top: 6px;">
+        ✨ Sugerir Jugada Real
+      </button>
+    </div>
+
+    <div class="panel-section">
+      <h2>🎥 Vistas del Salón</h2>
+      <div class="btn-grid">
+        <button class="btn" data-cam="white">Vista Blancas</button>
+        <button class="btn" data-cam="black">Vista Negras</button>
+        <button class="btn" data-cam="top">Vista Cenital</button>
+        <button class="btn" data-cam="castle">Gran Salón</button>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <h2>🔥 Antorchas del Castillo</h2>
+      <div class="control-group">
+        <label for="slider-torches">Intensidad del fuego real</label>
+        <input
+          id="slider-torches"
+          type="range"
+          min="0.3"
+          max="1.8"
+          step="0.05"
+          value="1.0"
+        />
+      </div>
+    </div>
+  </aside>
+
+  <!-- PANEL DERECHO: BOTÍN DE CAPTURAS E HISTORIAL ALGEBRAICO -->
+  <aside class="side-panel right-panel">
+    <div class="panel-section">
+      <h2>🛡️ Capturas de Blancas</h2>
+      <div id="captured-by-white" class="captured-box">—</div>
+    </div>
+
+    <div class="panel-section">
+      <h2>⚔️ Capturas de Negras</h2>
+      <div id="captured-by-black" class="captured-box">—</div>
+    </div>
+
+    <div class="panel-section">
+      <h2>📜 Crónica de Jugadas</h2>
+      <div id="moves-list" class="moves-list"></div>
+    </div>
+  </aside>
+
+  <!-- PIE INFORMATIVO DE CÁMARA -->
+  <div class="bottom-hint">
+    🖱️ Clic izquierdo en pieza y casilla para mover · Arrastrar para orbitar por el castillo · Rueda para zoom
+  </div>
+
+  <!-- MODAL DE PROMOCIÓN DE PEÓN -->
+  <div id="promotion-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h3>👑 Coronación Real del Peón</h3>
+      <p>Tu peón ha cruzado el campo de batalla. Elige en qué pieza noble deseas convertirlo:</p>
+      <div class="promo-options">
+        <button class="promo-btn" data-piece="Q">
+          <span class="promo-icon">♕</span>
+          <span>Reina</span>
+        </button>
+        <button class="promo-btn" data-piece="R">
+          <span class="promo-icon">♖</span>
+          <span>Torre</span>
+        </button>
+        <button class="promo-btn" data-piece="B">
+          <span class="promo-icon">♗</span>
+          <span>Alfil</span>
+        </button>
+        <button class="promo-btn" data-piece="N">
+          <span class="promo-icon">♘</span>
+          <span>Caballo</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL CON GUÍA DEL SCRIPT DE BLENDER -->
+  <div id="blender-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h3>🐍 Cómo usar el Script en Blender (3.x / 4.x)</h3>
+      <p>
+        En la carpeta de este proyecto se ha generado el archivo
+        <strong><code>blender_castillo_ajedrez.py</code></strong>.
+      </p>
+      <p>
+        1. Abre <strong>Blender</strong> y entra en la pestaña <strong>Scripting</strong>.<br />
+        2. Haz clic en <strong>Open</strong>, selecciona <code>blender_castillo_ajedrez.py</code> y pulsa <strong>Run Script (▶)</strong>.<br />
+        3. El script modelará automáticamente el Gran Salón del Castillo, las columnas góticas, las antorchas con luces puntuales, el tablero biselado y las 32 piezas torneadas con materiales PBR.
+      </p>
+      <p>También puedes ejecutarlo desde terminal para exportar <code>castillo_ajedrez.glb</code>:</p>
+      <div class="code-block">blender --background --python blender_castillo_ajedrez.py</div>
+      <button id="btn-close-blender-modal" class="btn btn-primary" style="width: 100%;">
+        Entendido
+      </button>
+    </div>
+  </div>
+
+  <!-- LIBRERÍAS THREE.JS + MOTOR Y ESCENA -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="chess-engine.js"></script>
+  <script src="castle-scene.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
